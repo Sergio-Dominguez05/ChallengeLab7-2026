@@ -37,10 +37,10 @@
         <p class="text-slate-400 text-lg mb-8">
           Descubre información turística de cualquier nación del mundo
         </p>
-
         <!-- Formulario de búsqueda -->
         <div class="max-w-2xl mx-auto">
           <div class="flex gap-4">
+
             <!-- Hago un select que es un menu desplegable y le doy el id para que sepa exactamente donde esta el elemento en el DOM (el arbol) -->
             <select  
               id="regionSelect"
@@ -50,6 +50,8 @@
               <!-- Esto de aqui basicamente lo que hace es manejar de manera dinamica las regiones con ayuda de un listener -->
                <!-- Cuando el usuario selecciona una opcion del select entonces se cambia el regionSelect.value a ese que escogio y filtra -->
             </select>
+
+            
             <input
               type="text"
               id="searchInput"

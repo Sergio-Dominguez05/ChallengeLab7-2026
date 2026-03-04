@@ -49,6 +49,9 @@ let currentState: UiState = { status: 'idle' };
 /** Última búsqueda realizada (para evitar búsquedas duplicadas) */
 let lastSearchQuery = '';
 
+/** Agrego esata variable global para no estarle pidiendo a la API cada dos por tres si no que de una vez bajamos todo y de ahi filtramos */
+let allCountries: Country[] = [];
+
 // =============================================================================
 // REFERENCIAS A ELEMENTOS DEL DOM
 // =============================================================================
@@ -59,6 +62,8 @@ let lastSearchQuery = '';
 let searchInput: HTMLInputElement;
 let searchButton: HTMLButtonElement;
 let retryButton: HTMLButtonElement;
+// 
+let regionSelect: HTMLSelectElement;
 let loadingState: HTMLElement;
 let errorState: HTMLElement;
 let errorMessage: HTMLElement;
@@ -74,12 +79,76 @@ function initializeElements(): void {
   searchInput = getRequiredElement<HTMLInputElement>('#searchInput');
   searchButton = getRequiredElement<HTMLButtonElement>('#searchButton');
   retryButton = getRequiredElement<HTMLButtonElement>('#retryButton');
+  //
+  regionSelect = getRequiredElement<HTMLSelectElement>('#regionSelect');
   loadingState = getRequiredElement<HTMLElement>('#loadingState');
   errorState = getRequiredElement<HTMLElement>('#errorState');
   errorMessage = getRequiredElement<HTMLElement>('#errorMessage');
   emptyState = getRequiredElement<HTMLElement>('#emptyState');
   noResultsState = getRequiredElement<HTMLElement>('#noResultsState');
   countriesList = getRequiredElement<HTMLElement>('#countriesList');
+}
+
+/**
+ * Todo esto que esta a partir de aqui hasta qe se llega a las funciones de renderizado es el filtro
+ */
+function populateRegionOptions(countries: Country[]): void {
+  // Tomamos regiones únicas y las ordenamos (ignorando valores vacíos)
+  const regions = Array.from(
+    new Set(countries.map((c) => c.region).filter((r): r is string => typeof r === 'string' && r.trim().length > 0))
+  ).sort((a, b) => a.localeCompare(b));
+
+  // Conservamos la selección actual (si el usuario ya había elegido una región)
+  const previousValue = regionSelect.value;
+
+  // Limpiamos opciones excepto el "All Regions"
+  regionSelect.innerHTML = '<option value="all">All Regions</option>';
+
+  // Agregamos opciones dinámicas
+  regions.forEach((region) => {
+    const option = document.createElement('option');
+    option.value = region;
+    option.textContent = region;
+    regionSelect.appendChild(option);
+  });
+
+  // Restauramos selección si aún existe; si no, dejamos "all"
+  if (previousValue && Array.from(regionSelect.options).some((o) => o.value === previousValue)) {
+    regionSelect.value = previousValue;
+  } else {
+    regionSelect.value = 'all';
+  }
+}
+
+/**
+ * Aplica ambos filtros (texto + región) sobre la lista completa.
+ */
+function applyFilters(): void {
+  if (allCountries.length === 0) {
+    render({ status: 'idle' });
+    return;
+  }
+
+  const query = searchInput.value.trim().toLowerCase();
+  const selectedRegion = regionSelect.value;
+
+  let filtered = allCountries;
+
+  // 1) Filtro por región
+  if (selectedRegion !== 'all') {
+    filtered = filtered.filter((c) => c.region === selectedRegion);
+  }
+
+  // 2) Filtro por nombre (common u official)
+  if (query.length > 0) {
+    filtered = filtered.filter((c) => {
+      const common = c.name.common?.toLowerCase() ?? '';
+      const official = c.name.official?.toLowerCase() ?? '';
+      return common.includes(query) || official.includes(query);
+    });
+  }
+
+  render({ status: 'success', data: filtered });
 }
 
 // =============================================================================
